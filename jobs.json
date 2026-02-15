@@ -1,0 +1,27 @@
+[
+    {
+        "title": "React Native Developer",
+        "location": "Remote",
+        "requirements": "2+ years React Native, TypeScript, Mobile deployment experience",
+        "company": "Appify Solutions",
+        "salary": "$80,000 - $110,000",
+        "applyLink": "https://appify.jobs/react-native",
+        "labels": [
+            "Remote",
+            "Mobile",
+            "React Native"
+        ]
+    },
+    {
+        "title": "Python Backend Engineer",
+        "location": "Austin, TX",
+        "requirements": "Strong Python, Django, PostgreSQL, AWS Knowledge",
+        "company": "DataStream",
+        "applyEmail": "hr@datastream.com",
+        "labels": [
+            "Austin",
+            "Python",
+            "Backend"
+        ]
+    }
+]
