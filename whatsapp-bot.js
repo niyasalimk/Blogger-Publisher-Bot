@@ -39,6 +39,7 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+        headless: true,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -46,24 +47,29 @@ const client = new Client({
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
-            '--single-process',
-            '--disable-gpu'
+            '--disable-gpu',
+            '--hide-scrollbars',
+            '--disable-notifications',
+            '--disable-extensions'
         ],
     }
 });
 
+console.log('🏁 Initializing WhatsApp client...');
+
 client.on('qr', (qr) => {
-    console.log('📱 QR Code received. View it here: /qr');
+    console.log('📱 QR Code received! Current time:', new Date().toLocaleTimeString());
     lastQr = qr;
     qrcode.generate(qr, { small: true });
 });
 
 client.on('loading_screen', (percent, message) => {
-    console.log('⏳ LOADING SCREEN:', percent, message);
+    console.log(`⏳ LOADING SCREEN: ${percent}% - ${message}`);
 });
 
 client.on('authenticated', () => {
     console.log('✅ Authenticated successfully!');
+    lastQr = null; // Clear QR once authenticated
 });
 
 client.on('auth_failure', msg => {
@@ -73,6 +79,12 @@ client.on('auth_failure', msg => {
 client.on('ready', () => {
     console.log('🚀 WhatsApp Bot is ready and listening!');
 });
+
+// Periodic memory log to detect crashes
+setInterval(() => {
+    const mem = process.memoryUsage();
+    console.log(`📊 RAM Usage: ${Math.round(mem.rss / 1024 / 1024)}MB`);
+}, 30000);
 
 client.on('message_create', async (msg) => {
     // Only process messages that start with !
