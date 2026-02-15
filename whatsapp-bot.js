@@ -9,7 +9,30 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Simple health check for Railway
-app.get('/', (req, res) => res.send('Bot is running! 🚀'));
+app.get('/', (req, res) => res.send('Bot is running! 🚀 <br><br> <a href="/qr">View QR Code</a> if you need to log in.'));
+
+let lastQr = null;
+
+// QR Code viewer for cloud logs
+app.get('/qr', (req, res) => {
+    if (!lastQr) return res.send('No QR code available. The bot might be already connected or still starting.');
+
+    res.send(`
+        <html>
+            <body style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
+                <h2>Scan this QR Code</h2>
+                <div id="qrcode"></div>
+                <p style="margin-top:20px;">The bot will refresh this page automatically if a new code is generated.</p>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+                <script>
+                    new QRCode(document.getElementById("qrcode"), "${lastQr}");
+                    setTimeout(() => location.reload(), 30000); // Refresh every 30s
+                </script>
+            </body>
+        </html>
+    `);
+});
+
 app.listen(port, () => console.log(`📡 Health check server listening on port ${port}`));
 
 const client = new Client({
@@ -30,7 +53,8 @@ const client = new Client({
 });
 
 client.on('qr', (qr) => {
-    console.log('📱 Scan this QR code with WhatsApp to log in:');
+    console.log('📱 QR Code received. View it here: /qr');
+    lastQr = qr;
     qrcode.generate(qr, { small: true });
 });
 
