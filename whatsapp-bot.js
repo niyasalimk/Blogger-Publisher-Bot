@@ -12,22 +12,39 @@ const port = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is running! 🚀 <br><br> <a href="/qr">View QR Code</a> if you need to log in.'));
 
 let lastQr = null;
+let lastQrTime = null;
 
 // QR Code viewer for cloud logs
 app.get('/qr', (req, res) => {
-    if (!lastQr) return res.send('No QR code available. The bot might be already connected or still starting.');
+    console.log(`🔎 QR page accessed at ${new Date().toLocaleTimeString()}`);
+    if (!lastQr) {
+        return res.send(`
+            <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
+                <h2>No QR code available yet.</h2>
+                <p>The bot might be already connected, or still starting up.</p>
+                <p>Check the Railway "Deploy Logs" to see the latest status.</p>
+                <button onclick="location.reload()">Refresh Page</button>
+            </div>
+        `);
+    }
+
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(lastQr)}`;
 
     res.send(`
         <html>
-            <body style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
-                <h2>Scan this QR Code</h2>
-                <div id="qrcode"></div>
-                <p style="margin-top:20px;">The bot will refresh this page automatically if a new code is generated.</p>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-                <script>
-                    new QRCode(document.getElementById("qrcode"), "${lastQr}");
-                    setTimeout(() => location.reload(), 30000); // Refresh every 30s
-                </script>
+            <head>
+                <title>WhatsApp Bot Login</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+            </head>
+            <body style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; font-family:sans-serif; background:#f0f2f5; margin:0; padding:20px; box-sizing:border-box;">
+                <div style="background:white; padding:30px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.1); text-align:center; max-width:400px; width:100%;">
+                    <h2 style="color:#25d366;">Scan with WhatsApp</h2>
+                    <img src="${qrImageUrl}" alt="QR Code" style="border:10px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.1); margin:20px 0; max-width:100%;">
+                    <p style="color:#666; font-size:14px;">Last updated: ${lastQrTime}</p>
+                    <p style="margin-top:20px; font-size:13px; color:#888;">Open WhatsApp > Settings > Linked Devices > Link a Device</p>
+                    <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#25d366; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Refresh Code</button>
+                </div>
+                <script>setTimeout(() => location.reload(), 20000);</script>
             </body>
         </html>
     `);
@@ -58,8 +75,9 @@ const client = new Client({
 console.log('🏁 Initializing WhatsApp client...');
 
 client.on('qr', (qr) => {
-    console.log('📱 QR Code received! Current time:', new Date().toLocaleTimeString());
     lastQr = qr;
+    lastQrTime = new Date().toLocaleTimeString();
+    console.log(`📱 QR Code received at ${lastQrTime}. View it here: /qr`);
     qrcode.generate(qr, { small: true });
 });
 
