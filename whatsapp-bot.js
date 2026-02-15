@@ -55,8 +55,9 @@ app.listen(port, '0.0.0.0', () => console.log(`📡 Health check server listenin
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
-        headless: true,
+        // Only use /usr/bin/chromium if we are specifically on a Linux server/Docker
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || (process.platform === 'linux' ? '/usr/bin/chromium' : undefined),
+        headless: process.platform === 'linux' ? true : false, // Show browser locally, hide in cloud
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
