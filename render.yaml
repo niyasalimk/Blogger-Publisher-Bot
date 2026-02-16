@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: blogger-publisher-bot
+    env: docker
+    plan: starter # Free plan will sleep and kill WhatsApp connection
+    autoDeploy: true
+    branch: main
+    dockerFilePath: Dockerfile
+    # Add a Disk (IMPORTANT for WhatsApp session)
+    disk:
+      name: wwebjs_auth
+      mountPath: /usr/src/app/.wwebjs_auth
+      sizeGB: 1
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: BLOG_ID
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REFRESH_TOKEN
+        sync: false
+      - key: PORT
+        value: 8080
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium
