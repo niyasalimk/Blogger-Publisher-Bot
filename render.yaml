@@ -5,7 +5,7 @@ services:
     plan: starter
     autoDeploy: true
     branch: main
-    dockerFilePath: Dockerfile
+    dockerfilePath: Dockerfile
     envVars:
       - key: OPENROUTER_API_KEY
         sync: false
