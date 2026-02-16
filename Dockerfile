@@ -26,7 +26,7 @@ RUN npm install
 COPY . .
 
 # Create labels for Railway health checks (App will listen on port 3000)
-EXPOSE 3000
+EXPOSE 8080
 
 # Start the bot
 CMD ["node", "whatsapp-bot.js"]
