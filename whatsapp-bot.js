@@ -115,7 +115,10 @@ const client = new Client({
             '--disable-notifications',
             '--disable-extensions'
         ],
-    }
+        timeout: 60000, // Wait 60s for browser to start
+    },
+    authTimeoutMs: 60000, // Wait 60s for auth handshake
+    qrMaxRetries: 10,     // Retry generating QR up to 10 times
 });
 
 console.log('🏁 Initializing WhatsApp client...');
@@ -174,9 +177,12 @@ client.on('message_create', async (msg) => {
             const jobDetails = await parseJobFromMessage(rawContent);
             console.log('✅ Parsed details:', JSON.stringify(jobDetails));
 
-            if (!jobDetails || !jobDetails.title || !jobDetails.location) {
-                console.log('⚠️ Failed to extract core details (title/location)');
-                return msg.reply('❌ Could not understand the job details. Please ensure you include the Job Title and Location at a minimum.');
+            // Default missing location to prevent errors
+            if (!jobDetails.location) jobDetails.location = "Not Specified";
+
+            if (!jobDetails || !jobDetails.title) {
+                console.log('⚠️ Failed to extract core details (title)');
+                return msg.reply('❌ Could not understand the job details. Please ensure you include the Job Title.');
             }
 
             // 2. Generate SEO Content
@@ -195,8 +201,57 @@ client.on('message_create', async (msg) => {
         }
     }
 
+
+    // !list command - Show recent posts
+    if (text === '!list') {
+        const { listPosts } = require('./lib/blogger');
+        const posts = await listPosts(5);
+        if (posts.length === 0) return msg.reply('📭 No posts found.');
+
+        let response = '*Recent Posts:*\n';
+        posts.forEach(p => {
+            response += `\n📌 *${p.title}*\n🆔 \`${p.id}\`\n🔗 ${p.url}\n`;
+        });
+        return msg.reply(response);
+    }
+
+    // !edit command - Update an existing post
+    if (text.startsWith('!edit ')) {
+        const content = msg.body.slice(6).trim();
+        // Extract ID (first word) and the rest is details
+        const firstSpace = content.indexOf(' ');
+        if (firstSpace === -1) return msg.reply('❌ Usage: !edit <POST_ID> <New Job Details...>');
+
+        const postId = content.substring(0, firstSpace);
+        const jobDescription = content.substring(firstSpace + 1);
+
+        console.log(`📝 Editing Post ${postId} with: ${jobDescription.substring(0, 30)}...`);
+        msg.reply('🔄 analyzing updates...');
+
+        try {
+            const { updatePost, getPost } = require('./lib/blogger');
+
+            // Verify post exists
+            const existingPost = await getPost(postId);
+            if (!existingPost) return msg.reply('❌ Post not found. Check the ID with !list');
+
+            // Parse new details
+            const jobDetails = await parseJobFromMessage(jobDescription);
+            if (!jobDetails || !jobDetails.title) return msg.reply('❌ Could not understand the new details.');
+
+            // Generate Content & Update
+            const htmlContent = await generateJobContent(jobDetails);
+            const updated = await updatePost(postId, `${jobDetails.title} - ${jobDetails.location || 'Remote'}`, htmlContent);
+
+            msg.reply(`✅ *Post Updated Successfully!*\n\n📌 Title: ${updated.title}\n🔗 URL: ${updated.url}`);
+        } catch (e) {
+            console.error(e);
+            msg.reply(`❌ Update Failed: ${e.message}`);
+        }
+    }
+
     if (text === '!help') {
-        msg.reply('🤖 *Blogger Publisher Bot Help*\n\nSend a message starting with `!publish` followed by job details.\n\n*Example:* !publish We need a React Dev in Dubai. 3yrs exp. jobs@tech.com');
+        msg.reply('🤖 *Blogger Publisher Bot Help*\n\n📝 *New Post:* `!publish <Job Details>`\n📋 *List Posts:* `!list`\n✏️ *Edit Post:* `!edit <POST_ID> <New Details>`');
     }
 
     if (text === '!ping') {
