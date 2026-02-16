@@ -77,8 +77,15 @@ console.log('🏁 Initializing WhatsApp client...');
 client.on('qr', (qr) => {
     lastQr = qr;
     lastQrTime = new Date().toLocaleTimeString();
-    console.log(`📱 QR Code received at ${lastQrTime}. View it here: /qr`);
-    qrcode.generate(qr, { small: true });
+
+    console.log('\n' + '='.repeat(40));
+    console.log('📱 WHATSAPP QR CODE RECEIVED');
+    console.log(`⏰ Time: ${lastQrTime}`);
+    console.log(`🔗 VIEW SCANNABLE QR HERE: http://localhost:${port}/qr`);
+    console.log('='.repeat(40) + '\n');
+
+    // If terminal QR is hard to scan, the web link above is the best fallback
+    qrcode.generate(qr, { small: false });
 });
 
 client.on('loading_screen', (percent, message) => {
