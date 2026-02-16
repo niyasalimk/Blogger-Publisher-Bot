@@ -1,3 +1,7 @@
+/*
+ * WhatsApp Bot for Blogger
+ * Optimized for Railway Deployment with Error Handling
+ */
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { generateJobContent, parseJobFromMessage } = require('./lib/openrouter');
@@ -8,22 +12,62 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Simple health check for Railway
-app.get('/', (req, res) => res.send('Bot is running! 🚀 <br><br> <a href="/qr">View QR Code</a> if you need to log in.'));
+// ==========================================
+// 🛡️ CRASH PREVENTION & DIAGNOSTICS
+// ==========================================
+let startupError = null;
+
+// Catch unhandled errors so the server stays up to report them
+process.on('uncaughtException', (err) => {
+    console.error('❌ UNCAUGHT EXCEPTION:', err);
+    startupError = `Uncaught Exception:\n${err.message}\n\nStack:\n${err.stack}`;
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ UNHANDLED REJECTION:', reason);
+    startupError = `Unhandled Rejection:\n${reason}`;
+});
 
 let lastQr = null;
 let lastQrTime = null;
 
-// QR Code viewer for cloud logs
+// ==========================================
+// 🌍 WEB SERVER (Health Check & QR)
+// ==========================================
+app.get('/', (req, res) => {
+    if (startupError) {
+        return res.status(500).send(`
+            <h1>🚨 Bot Failed to Start</h1>
+            <p><strong>Error Details:</strong></p>
+            <pre style="background:#eee; padding:15px; border-radius:5px;">${startupError}</pre>
+        `);
+    }
+    res.send('Bot is running! 🚀 <br><br> <a href="/qr">View QR Code</a>');
+});
+
 app.get('/qr', (req, res) => {
     console.log(`🔎 QR page accessed at ${new Date().toLocaleTimeString()}`);
+
+    if (startupError) {
+        return res.status(500).send(`
+            <div style="font-family:sans-serif; text-align:center; color: #721c24; margin-top:50px;">
+                <h1>⚠️ Bot Failed to Start</h1>
+                <p>Please check the error below and the Railway Logs.</p>
+                <div style="text-align:left; background:#f8d7da; padding:20px; max-width:800px; margin:20px auto; overflow:auto; border-radius:10px; border:1px solid #f5c6cb;">
+                    <pre>${startupError}</pre>
+                </div>
+                <button onclick="location.reload()" style="padding:10px 20px;">Retry</button>
+            </div>
+        `);
+    }
+
     if (!lastQr) {
         return res.send(`
             <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
-                <h2>No QR code available yet.</h2>
-                <p>The bot might be already connected, or still starting up.</p>
-                <p>Check the Railway "Deploy Logs" to see the latest status.</p>
-                <button onclick="location.reload()">Refresh Page</button>
+                <h2>Bot is Starting... ⏳</h2>
+                <p>Waiting for QR code from WhatsApp.</p>
+                <p>This page will auto-refresh every 5 seconds.</p>
+                <script>setTimeout(() => location.reload(), 5000);</script>
             </div>
         `);
     }
@@ -41,7 +85,6 @@ app.get('/qr', (req, res) => {
                     <h2 style="color:#25d366;">Scan with WhatsApp</h2>
                     <img src="${qrImageUrl}" alt="QR Code" style="border:10px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.1); margin:20px 0; max-width:100%;">
                     <p style="color:#666; font-size:14px;">Last updated: ${lastQrTime}</p>
-                    <p style="margin-top:20px; font-size:13px; color:#888;">Open WhatsApp > Settings > Linked Devices > Link a Device</p>
                     <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#25d366; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Refresh Code</button>
                 </div>
                 <script>setTimeout(() => location.reload(), 20000);</script>
@@ -52,12 +95,15 @@ app.get('/qr', (req, res) => {
 
 app.listen(port, '0.0.0.0', () => console.log(`📡 Health check server listening on port ${port}`));
 
+// ==========================================
+// 📱 WHATSAPP CLIENT CONFIGURATION
+// ==========================================
+
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        // Only use /usr/bin/chromium if we are specifically on a Linux server/Docker
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || (process.platform === 'linux' ? '/usr/bin/chromium' : undefined),
-        headless: process.platform === 'linux' ? true : false, // Show browser locally, hide in cloud
+        headless: process.platform === 'linux' ? true : false,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -80,11 +126,9 @@ client.on('qr', (qr) => {
 
     console.log('\n' + '='.repeat(40));
     console.log('📱 WHATSAPP QR CODE RECEIVED');
-    console.log(`⏰ Time: ${lastQrTime}`);
     console.log(`🔗 VIEW SCANNABLE QR HERE: http://localhost:${port}/qr`);
     console.log('='.repeat(40) + '\n');
 
-    // If terminal QR is hard to scan, the web link above is the best fallback
     qrcode.generate(qr, { small: false });
 });
 
@@ -94,11 +138,12 @@ client.on('loading_screen', (percent, message) => {
 
 client.on('authenticated', () => {
     console.log('✅ Authenticated successfully!');
-    lastQr = null; // Clear QR once authenticated
+    lastQr = null;
 });
 
 client.on('auth_failure', msg => {
     console.error('❌ Authentication failure:', msg);
+    startupError = `Authentication Failure: ${msg}`;
 });
 
 client.on('ready', () => {
@@ -112,7 +157,6 @@ setInterval(() => {
 }, 30000);
 
 client.on('message_create', async (msg) => {
-    // Only process messages that start with !
     if (!msg.body.startsWith('!')) return;
 
     const text = msg.body.toLowerCase();
@@ -128,7 +172,6 @@ client.on('message_create', async (msg) => {
             // 1. Parse unstructured message into job details
             console.log('🔍 Parsing message via AI...');
             const jobDetails = await parseJobFromMessage(rawContent);
-
             console.log('✅ Parsed details:', JSON.stringify(jobDetails));
 
             if (!jobDetails || !jobDetails.title || !jobDetails.location) {
@@ -161,4 +204,8 @@ client.on('message_create', async (msg) => {
     }
 });
 
-client.initialize();
+// INITIALIZE WITH ERROR CATCHING
+client.initialize().catch(err => {
+    console.error('❌ FATAL ERROR DURING INITIALIZATION:', err);
+    startupError = `Initialization Error: ${err.message}`;
+});
