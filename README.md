@@ -1,6 +1,6 @@
 # Blogger Publisher Bot
 
-This bot automates the creation and editing of SEO-friendly job posts on Blogger using AI.
+This bot automates the creation and editing of SEO-friendly content on Blogger using AI. It supports generating **Job Posts**, **Other** (general articles/news), and **All** (mixed content style).
 
 ## 🚀 How It Works
 
@@ -53,11 +53,13 @@ node publisher.js publish "Frontend Dev" "Dubai" "React" --date "Oct 25" --time 
 Add `--publish` flag to publish directly instead of drafting.
 
 ### Batch Publish from JSON
-Create a `jobs.json` file (see example in project) and run:
+Create a `.json` file (see `jobs.json` example in project) and run:
 ```bash
-node publisher.js batch jobs.json
+node publisher.js batch data.json
 ```
 Add `--publish` to publish all posts in the batch.
+
+*💡 Pro Tip: You can specify a `"type"` field in your JSON objects (e.g., `"type": "job"`, `"type": "other"`, or `"type": "all"`) to guide the AI to generate the right content format.*
 
 ### List Recent Posts
 ```bash
