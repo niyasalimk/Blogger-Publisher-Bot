@@ -61,6 +61,20 @@ app.get('/qr', (req, res) => {
         `);
     }
 
+    if (pairingCode) {
+        return res.send(`
+            <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
+                <h1>🔗 Pairing Code</h1>
+                <p>Enter this code on your WhatsApp (Link Device > Link with Phone Number):</p>
+                <div style="background:#e8f5e9; padding:20px; font-size:40px; font-weight:bold; letter-spacing:10px; border:2px dashed #4caf50; display:inline-block; margin:20px;">
+                    ${pairingCode}
+                </div>
+                <p style="color:#666;">This code refreshes automatically.</p>
+                <script>setTimeout(() => location.reload(), 10000);</script>
+            </div>
+        `);
+    }
+
     if (!lastQr) {
         return res.send(`
             <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
@@ -123,16 +137,43 @@ const client = new Client({
 
 console.log('🏁 Initializing WhatsApp client...');
 
-client.on('qr', (qr) => {
-    lastQr = qr;
-    lastQrTime = new Date().toLocaleTimeString();
 
-    console.log('\n' + '='.repeat(40));
-    console.log('📱 WHATSAPP QR CODE RECEIVED');
-    console.log(`🔗 VIEW SCANNABLE QR HERE: http://localhost:${port}/qr`);
-    console.log('='.repeat(40) + '\n');
+let pairingCode = null;
 
-    qrcode.generate(qr, { small: false });
+client.on('qr', async (qr) => {
+    // Check if user prefers Pairing Code (Link with Number)
+    const pairingNumber = process.env.PAIRING_NUMBER;
+
+    if (pairingNumber && !pairingCode) {
+        console.log(`🔗 Requesting Pairing Code for: ${pairingNumber}...`);
+        try {
+            // requestPairingCode returns a Promise<string>
+            const code = await client.requestPairingCode(pairingNumber);
+            pairingCode = code; // Store it to show on web
+
+            console.log('\n' + '='.repeat(40));
+            console.log('📱 WHATSAPP PAIRING CODE');
+            console.log(`🔢 CODE: ${code}`);
+            console.log('='.repeat(40) + '\n');
+
+            lastQr = null; // Hide QR since we are using code
+        } catch (err) {
+            console.error('❌ Failed to request pairing code:', err);
+        }
+        return;
+    }
+
+    if (!pairingNumber) {
+        lastQr = qr;
+        lastQrTime = new Date().toLocaleTimeString();
+
+        console.log('\n' + '='.repeat(40));
+        console.log('📱 WHATSAPP QR CODE RECEIVED');
+        console.log(`🔗 VIEW SCANNABLE QR HERE: http://localhost:${port}/qr`);
+        console.log('='.repeat(40) + '\n');
+
+        qrcode.generate(qr, { small: false });
+    }
 });
 
 client.on('loading_screen', (percent, message) => {
@@ -159,46 +200,78 @@ setInterval(() => {
     console.log(`📊 RAM Usage: ${Math.round(mem.rss / 1024 / 1024)}MB`);
 }, 30000);
 
+// Memory for chat contexts (refinement support)
+const chatContexts = {};
+
 client.on('message_create', async (msg) => {
     if (!msg.body.startsWith('!')) return;
 
+    const chat = await msg.getChat();
+    const chatId = chat.id._serialized;
     const text = msg.body.toLowerCase();
-    console.log(`📩 Received command: ${text}`);
+    console.log(`📩 Received command from ${chatId}: ${text}`);
 
     if (text.startsWith('!publish ')) {
         const rawContent = msg.body.slice(9).trim();
-        console.log(`📝 Processing publish command with content: ${rawContent.substring(0, 50)}...`);
 
         try {
-            msg.reply('🚀 Processing your job post... Please wait.');
+            msg.reply('🚀 Processing... (Context Active)');
 
-            // 1. Parse unstructured message into job details
-            console.log('🔍 Parsing message via AI...');
-            const jobDetails = await parseJobFromMessage(rawContent);
-            console.log('✅ Parsed details:', JSON.stringify(jobDetails));
+            // 1. Parse details
+            let jobDetails = await parseJobFromMessage(rawContent);
 
-            // Default missing location to prevent errors
-            if (!jobDetails.location) jobDetails.location = "Not Specified";
-
-            if (!jobDetails || !jobDetails.title) {
-                console.log('⚠️ Failed to extract core details (title)');
-                return msg.reply('❌ Could not understand the job details. Please ensure you include the Job Title.');
+            // Refinement Logic
+            if (chatContexts[chatId]) {
+                const prev = chatContexts[chatId];
+                // Merge new details into old
+                jobDetails = {
+                    ...prev,
+                    ...Object.fromEntries(Object.entries(jobDetails).filter(([_, v]) => v !== null && v !== "" && v !== undefined)),
+                    customDirectives: [prev.customDirectives, jobDetails.customDirectives].filter(Boolean).join(". ")
+                };
             }
 
-            // 2. Generate SEO Content
-            console.log('🤖 Generating SEO content...');
+            // Store for next time
+            chatContexts[chatId] = jobDetails;
+
+            if (!jobDetails || !jobDetails.title) {
+                return msg.reply('❌ Could not understand. Please include at least a Job Title.');
+            }
+
+            // 2. Generate Content (Bot generator currently doesn't support context-aware HTML refinement yet, but it gets the merged details)
             const htmlContent = await generateJobContent(jobDetails);
 
-            // 3. Create Draft on Blogger
-            console.log('📝 Creating Blogger draft...');
-            const post = await createDraft(`${jobDetails.title} - ${jobDetails.location}`, htmlContent, true);
+            // 3. Submit to Dashboard
+            const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+            const userId = process.env.USER_ID;
 
-            console.log('🎉 Successfully drafted post:', post.id);
-            msg.reply(`🎉 Success! Your job post has been drafted.\n\n📌 Title: ${post.title}\n🔗 URL: ${post.url}\n🆔 ID: ${post.id}`);
+            if (!userId) throw new Error("USER_ID is not configured.");
+
+            const response = await fetch(`${backendUrl}/api/bot/submit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userId,
+                    title: `${jobDetails.title} - ${jobDetails.location || 'Remote'}`,
+                    htmlContent: htmlContent,
+                    mode: 'job'
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error);
+
+            msg.reply(`🎉 Success! Sent to Dashboard.\n\n📌 Title: ${jobDetails.title} \n🆔 ID: ${result.postId}\n\nReview it here: ${backendUrl}/planner`);
+
         } catch (error) {
-            console.error('❌ WhatsApp Bot Error:', error);
-            msg.reply(`❌ Failed to process: ${error.message}`);
+            console.error('❌ Bot Error:', error);
+            msg.reply(`❌ Failed: ${error.message}`);
         }
+    }
+
+    if (text === '!new' || text === '!reset') {
+        delete chatContexts[chatId];
+        return msg.reply('🆕 *Session Reset.* Your previous context has been cleared. You can now start a fresh post!');
     }
 
 
@@ -251,7 +324,7 @@ client.on('message_create', async (msg) => {
     }
 
     if (text === '!help') {
-        msg.reply('🤖 *Blogger Publisher Bot Help*\n\n📝 *New Post:* `!publish <Job Details>`\n📋 *List Posts:* `!list`\n✏️ *Edit Post:* `!edit <POST_ID> <New Details>`');
+        msg.reply('🤖 Welcome to *Publixa AI*! 🚀\n\n📝 *New Post:* `!publish <Details>`\n🆕 *Clear Session:* `!new` (Start a fresh post)\n🚀 *Quick Action:* `!publish now` (Skip review)\n📋 *List Posts:* `!list`');
     }
 
     if (text === '!ping') {

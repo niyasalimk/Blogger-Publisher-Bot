@@ -31,6 +31,11 @@ The bot follows a 4-step process to transform a simple message into a profession
    node auth-helper.js
    ```
    Open the link, follow the prompts, and copy the `REFRESH_TOKEN` into your `.env` file.
+   
+   *Alternative:* If you configured the redirect URI as `urn:ietf:wg:oauth:2.0:oob`, you can use the interactive token generator:
+   ```bash
+   node get_token.js
+   ```
 
 ## Usage
 
