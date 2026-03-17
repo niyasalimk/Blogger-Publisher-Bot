@@ -6,10 +6,19 @@ This bot automates the creation and editing of SEO-friendly content on Blogger a
 
 The bot follows a 4-step process to transform a simple message into a professional blog post:
 
-1.  **📊 Data Input**: You provide job details either via the **CLI** or by sending a **WhatsApp message** starting with `!publish`.
-2.  **🧠 AI Parsing**: The bot uses AI (via OpenRouter) to analyze your unstructured text and extract key details like Job Title, Location, Salary, Requirements, and Interview details.
-3.  **✍️ Content Generation**: The AI then generates a highly optimized, SEO-friendly HTML blog post using a premium, mobile-responsive design template.
-4.  **📝 Publishing**: Finally, the bot uses the respective API to create a draft (or a live post) on your blog, complete with labels and direct application links.## Setup
+1.  **📊 Data Input**: You provide job details either via the **CLI**, a **JSON batch file**, or by sending a **WhatsApp message** starting with `!publish`.
+2.  **🧠 AI Parsing**: The bot uses AI (via OpenRouter or Gemini) to analyze your unstructured text and extract key details like Job Title, Location, Salary, Requirements, and Interview details. It even captures **custom directives** (e.g., "make it 700 words", "use a conversational tone") and applies them!
+3.  **✍️ Content Generation**: The AI then generates a highly optimized, SEO-friendly HTML blog post using a premium, mobile-responsive design template. It dynamically selects from 4 different writing styles (Corporate, Friendly, Energetic, Storytelling) to keep content fresh.
+4.  **📝 Publishing**: Finally, the bot uses the respective API to create a draft (or a live post) on your blog, complete with labels and direct application links.
+
+### ✨ Key Features
+- **CLI & WhatsApp Interfaces**: Manage posts from your terminal or directly from your phone.
+- **Context-Aware Chat**: The WhatsApp bot remembers your previous messages in a session, allowing you to refine job posts conversationally.
+- **Custom Prompts/Directives**: Instruct the AI directly in your message to change the output style or length.
+- **Batch Processing**: Feed a JSON file of multiple posts to publish them all at once safely.
+- **Full CRUD Support**: Publish, List, Edit, and Delete posts from the command line or WhatsApp.
+- **4 AI Writing Styles**: Professional & Corporate, Friendly & Engaging, Dynamic & Energetic, Storytelling.
+- **Rich HTML Output**: Generates modern gradients, rounded corners, professional typography, and mobile-friendly layouts inline.## Setup
 
 1. **Install dependencies**:
    ```bash
@@ -76,9 +85,17 @@ You can also run the bot via WhatsApp. This allows you to send rough job details
    ```bash
    node whatsapp-bot.js
    ```
-2. **Login**: Scan the QR code that appears in your terminal.
+2. **Login**: Scan the QR code that appears in your terminal, or head to `http://localhost:3000/qr`. You can also use a Pairing Code if you set `PAIRING_NUMBER` in your `.env`.
 3. **Usage**: Send a message to the bot (or in a group where the bot is present) starting with `!publish`.
-   *Example*: `!publish Hiring a Junior Designer in Mumbai. Must know Figma. Salary 50k. Email hr@design.com`
+   *Example*: `!publish Hiring a Junior Designer in Mumbai. Must know Figma. Salary 50k. Email hr@design.com. Make it sound very energetic!`
+
+**WhatsApp Commands:**
+- `!publish <Details>`: Create a new post.
+- `!edit <POST_ID> <New Details>`: Edit an existing post dynamically.
+- `!list`: List recent posts right in WhatsApp.
+- `!new` or `!reset`: Clear your session context if you want to start a completely fresh post without carrying over details.
+- `!help`: Show commands.
+- `!ping`: Health check.
 
 ---
 
