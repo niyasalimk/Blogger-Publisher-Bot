@@ -1,6 +1,6 @@
 # Blogger & WordPress Publisher Bot
 
-This bot automates the creation and editing of SEO-friendly content on Blogger and WordPress using AI. It supports generating **Job Posts**, **Other** (general articles/news), and **All** (mixed content style).
+This bot automates the creation and editing of SEO-friendly content on Blogger and WordPress using AI. It supports generating **Job Posts**, **Knowledge Base** articles, **Other** (general articles/news), and **All** (mixed content style).
 
 ## 🚀 How It Works
 
@@ -66,7 +66,7 @@ node publisher.js batch data.json
 ```
 Add `--publish` to publish all posts in the batch.
 
-*💡 Pro Tip: You can specify a `"type"` field in your JSON objects (e.g., `"type": "job"`, `"type": "other"`, or `"type": "all"`) to guide the AI to generate the right content format.*
+*💡 Pro Tip: You can specify a `"type"` field in your JSON objects (e.g., `"type": "job"`, `"type": "knowledge_base"`, `"type": "other"`, or `"type": "all"`) to guide the AI to generate the right content format.*
 
 ### List Recent Posts
 ```bash
