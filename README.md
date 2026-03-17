@@ -1,6 +1,6 @@
-# Blogger Publisher Bot
+# Blogger & WordPress Publisher Bot
 
-This bot automates the creation and editing of SEO-friendly content on Blogger using AI. It supports generating **Job Posts**, **Other** (general articles/news), and **All** (mixed content style).
+This bot automates the creation and editing of SEO-friendly content on Blogger and WordPress using AI. It supports generating **Job Posts**, **Other** (general articles/news), and **All** (mixed content style).
 
 ## 🚀 How It Works
 
@@ -9,9 +9,7 @@ The bot follows a 4-step process to transform a simple message into a profession
 1.  **📊 Data Input**: You provide job details either via the **CLI** or by sending a **WhatsApp message** starting with `!publish`.
 2.  **🧠 AI Parsing**: The bot uses AI (via OpenRouter) to analyze your unstructured text and extract key details like Job Title, Location, Salary, Requirements, and Interview details.
 3.  **✍️ Content Generation**: The AI then generates a highly optimized, SEO-friendly HTML blog post using a premium, mobile-responsive design template.
-4.  **📝 Blogger Publishing**: Finally, the bot uses the Google Blogger API to create a draft (or a live post) on your blog, complete with labels and direct application links.
-
-## Setup
+4.  **📝 Publishing**: Finally, the bot uses the respective API to create a draft (or a live post) on your blog, complete with labels and direct application links.## Setup
 
 1. **Install dependencies**:
    ```bash
